@@ -43,21 +43,9 @@ namespace NadekoBot.Classes
 
         private static bool stoped { get; set; } = false;
 
-        private Thread updater = new Thread(new ThreadStart(() =>
-        {
-            do
-            {
-                Task.Delay(200);
-                try
-                {
-                    DbHandler.Instance.UpdateDatabase();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("Error updating the database." + Environment.NewLine + ex);
-                }
-            } while (!stoped);
-        }));
+        private CancellationTokenSource cancelSource = new CancellationTokenSource();
+
+        private Task updater;
 
         private string FilePath { get; } = "data/nadekobot.sqlite";
 
@@ -66,6 +54,22 @@ namespace NadekoBot.Classes
         static DbHandler() { }
         public DbHandler()
         {
+            updater = Task.Run(() =>
+            {
+                var cancelToken = cancelSource.Token;
+                do
+                {
+                    Task.Delay(200);
+                    try
+                    {
+                        DbHandler.Instance.UpdateDatabase();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Error updating the database." + Environment.NewLine + ex);
+                    }
+                } while (!cancelToken.IsCancellationRequested);
+            }, cancelSource.Token);
             Connection = new SQLiteConnection(FilePath);
             Connection.CreateTable<Stats>();
             Connection.CreateTable<Command>();
@@ -83,7 +87,6 @@ namespace NadekoBot.Classes
             Connection.CreateTable<MusicPlaylist>();
             Connection.CreateTable<Incident>();
             Connection.Execute(Queries.TransactionTriggerQuery);
-            updater.Start();
             try
             {
                 Connection.Execute(Queries.DeletePlaylistTriggerQuery);
@@ -314,8 +317,8 @@ Limit 20 OFFSET ?", num * 20);
         /// </summary>
         internal void Stop()
         {
-            stoped = true;
-            updater.Join();
+            if (!cancelSource.IsCancellationRequested)
+                cancelSource.Cancel();
         }
     }
 }
