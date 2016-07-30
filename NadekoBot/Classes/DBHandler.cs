@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace NadekoBot.Classes
@@ -12,14 +13,17 @@ namespace NadekoBot.Classes
 
     internal class DbHandler
     {
-
+        /// <summary>
+        /// Update rate in miliseconds
+        /// </summary>
+        const int DbUpdateRate = 200;
         private class Operation
         {
-            public IDataModel model { get; set; }
-            public Type type { get; set; }
-            public int id { get; set; }
-            public IEnumerable<IDataModel> enumerable { get; set; }
-            public Method method { get; set; }
+            public IDataModel Model { get; set; }
+            public Type OperationType { get; set; }
+            public int Id { get; set; }
+            public IEnumerable<IDataModel> Enumerable { get; set; }
+            public Method OperationMethod { get; set; }
         }
 
         private enum Method
@@ -39,15 +43,21 @@ namespace NadekoBot.Classes
 
         private static bool stoped { get; set; } = false;
 
-        private Task updater = new Task(() =>
+        private Thread updater = new Thread(new ThreadStart(() =>
         {
-            while(!stoped)
+            do
             {
                 Task.Delay(200);
-                DbHandler.Instance.UpdateDatabase();
-            }
-            DbHandler.Instance.UpdateDatabase(); //make sure that we updated the database completely
-        });
+                try
+                {
+                    DbHandler.Instance.UpdateDatabase();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error updating the database." + Environment.NewLine + ex);
+                }
+            } while (!stoped);
+        }));
 
         private string FilePath { get; } = "data/nadekobot.sqlite";
 
@@ -98,8 +108,8 @@ namespace NadekoBot.Classes
         {
             Operation op = new Operation()
             {
-                method = Method.DELETEALL,
-                type = typeof(T)
+                OperationMethod = Method.DELETEALL,
+                OperationType = typeof(T)
             };
             waitingQueries.Enqueue(op);
         }
@@ -111,9 +121,9 @@ namespace NadekoBot.Classes
             {
                 Operation op = new Operation()
                 {
-                    method = Method.DELETE,
-                    type = typeof(T),
-                    id = id.Value,
+                    OperationMethod = Method.DELETE,
+                    OperationType = typeof(T),
+                    Id = id.Value,
                 };
                 waitingQueries.Enqueue(op);
             }
@@ -123,9 +133,9 @@ namespace NadekoBot.Classes
         {
             Operation op = new Operation()
             {
-                method = Method.INSERT,
-                type = typeof(T),
-                model = o
+                OperationMethod = Method.INSERT,
+                OperationType = typeof(T),
+                Model = o
             };
             waitingQueries.Enqueue(op);
         }
@@ -134,8 +144,8 @@ namespace NadekoBot.Classes
         {
             Operation op = new Operation()
             {
-                enumerable = objects,
-                method = Method.INSERT_MANY,
+                Enumerable = objects,
+                OperationMethod = Method.INSERT_MANY,
             };
             waitingQueries.Enqueue(op);
         }
@@ -144,9 +154,9 @@ namespace NadekoBot.Classes
         {
             Operation op = new Operation()
             {
-                method = Method.UPDATE,
-                type = typeof(T),
-                model = o
+                OperationMethod = Method.UPDATE,
+                OperationType = typeof(T),
+                Model = o
             };
             waitingQueries.Enqueue(op);
         }
@@ -155,9 +165,9 @@ namespace NadekoBot.Classes
         {
             Operation op = new Operation()
             {
-                method = Method.UPDATEALL,
-                type = typeof(T),
-                enumerable = objs
+                OperationMethod = Method.UPDATEALL,
+                OperationType = typeof(T),
+                Enumerable = objs
             };
             waitingQueries.Enqueue(op);
         }
@@ -190,9 +200,9 @@ namespace NadekoBot.Classes
             {
                 Operation op = new Operation()
                 {
-                    method = Method.INSERT,
-                    type = typeof(T),
-                    model = o
+                    OperationMethod = Method.INSERT,
+                    OperationType = typeof(T),
+                    Model = o
                 };
                 waitingQueries.Enqueue(op);
             }
@@ -200,9 +210,9 @@ namespace NadekoBot.Classes
             {
                 Operation op = new Operation()
                 {
-                    method = Method.UPDATE,
-                    type = typeof(T),
-                    model = o
+                    OperationMethod = Method.UPDATE,
+                    OperationType = typeof(T),
+                    Model = o
                 };
                 waitingQueries.Enqueue(op);
             }
@@ -217,9 +227,9 @@ namespace NadekoBot.Classes
             {
                 Operation op = new Operation()
                 {
-                    method = Method.INSERT_OR_REPLACE,
-                    type = typeof(T),
-                    model = o
+                    OperationMethod = Method.INSERT_OR_REPLACE,
+                    OperationType = typeof(T),
+                    Model = o
                 };
                 waitingQueries.Enqueue(op);
             }
@@ -258,52 +268,54 @@ Limit 20 OFFSET ?", num * 20);
                 return;
 
             Connection.BeginTransaction();
-            while(!waitingQueries.IsEmpty)
+            while (!waitingQueries.IsEmpty)
             {
                 Operation op = null;
                 bool res = waitingQueries.TryDequeue(out op);
                 if (!res)
                     return; //Do not continue, let's try the next datate update
-                switch(op.method)
+                switch (op.OperationMethod)
                 {
                     case Method.INSERT:
-                        Connection.Insert(op.model, "ON CONFLICT IGNORE", op.type);
+                        Connection.Insert(op.Model, "ON CONFLICT IGNORE", op.OperationType);
                         break;
                     case Method.INSERT_MANY:
-                        foreach (var q in op.enumerable)  //Don't use internal InsertAll, We are already in transaction
+                        foreach (var q in op.Enumerable)  //Don't use internal InsertAll, We are already in transaction
                         {
-                            Connection.Insert(q, "ON CONFLICT IGNORE", op.type);
+                            Connection.Insert(q, "ON CONFLICT IGNORE", op.OperationType);
                         }
                         break;
                     case Method.INSERT_OR_REPLACE:
-                        Connection.InsertOrReplace(op, op.type);
+                        Connection.InsertOrReplace(op, op.OperationType);
                         break;
                     case Method.UPDATE:
-                        Connection.Update(op.model, op.type);
+                        Connection.Update(op.Model, op.OperationType);
                         break;
                     case Method.UPDATEALL:
-                        foreach (var q in op.enumerable)
+                        foreach (var q in op.Enumerable)
                         {
-                            Connection.Update(q, op.type);
+                            Connection.Update(q, op.OperationType);
 
                         }
                         break;
                     case Method.DELETE:
-                        typeof(SQLiteConnection).GetMethod("Delete").MakeGenericMethod(op.type).Invoke(this, new object[] {op.id }); //Reflexion to get the generic method, not the most elegant way
+                        typeof(SQLiteConnection).GetMethod("Delete").MakeGenericMethod(op.OperationType).Invoke(this, new object[] { op.Id }); //Reflexion to get the generic method, not the most elegant way
                         break;
                     case Method.DELETEALL:
-                        typeof(SQLiteConnection).GetMethod("DeleteAll").MakeGenericMethod(op.type).Invoke(this, new object[] {}); //Reflexion to get the generic method, not the most elegant way
+                        typeof(SQLiteConnection).GetMethod("DeleteAll").MakeGenericMethod(op.OperationType).Invoke(this, new object[] { }); //Reflexion to get the generic method, not the most elegant way
                         break;
                 }
 
             }
             Connection.Commit();
         }
-
+        /// <summary>
+        /// Call this only when bot is really shutting down
+        /// </summary>
         internal void Stop()
         {
             stoped = true;
-            updater.Wait();
+            updater.Join();
         }
     }
 }
