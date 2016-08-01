@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Discord.Commands;
+using NadekoBot.Classes;
 using NadekoBot.DataModels;
+using NadekoBot.Modules.LastFm.Models;
 
-namespace NadekoBot.Classes
+namespace NadekoBot.Modules.LastFm.Handlers
 {
 	internal static class LastFmUserHandler
 	{

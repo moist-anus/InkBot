@@ -199,7 +199,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\LastFmUserHandler.cs" />
+    <Compile Include="Modules\LastFm\Handlers\LastFmUserHandler.cs" />
     <Compile Include="Classes\ObservableConcurrentDictionary.cs" />
     <Compile Include="Modules\Administration\Commands\AutoAssignRole.cs" />
     <Compile Include="Modules\Administration\Commands\CustomReactionsCommands.cs" />
@@ -224,7 +224,7 @@
     <Compile Include="Modules\Searches\Commands\OsuCommands.cs" />
     <Compile Include="Modules\Searches\Commands\PokemonSearchCommands.cs" />
     <Compile Include="Modules\Utility\UtilityModule.cs" />
-    <Compile Include="_Models\DataModels\LastFmUserModel.cs" />
+    <Compile Include="Modules\LastFm\Models\LastFmUserModel.cs" />
     <Compile Include="_Models\DataModels\TestDataModel.cs" />
     <Compile Include="_Models\DataModels\Incident.cs" />
     <Compile Include="_Models\JSONModels\AnimeResult.cs" />

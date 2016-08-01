@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using NadekoBot.Modules.LastFm.Models;
 
 namespace NadekoBot.Classes
 {

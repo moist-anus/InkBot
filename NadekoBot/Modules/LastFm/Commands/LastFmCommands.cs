@@ -8,6 +8,7 @@ using Discord.Commands;
 using Lastfm.Services;
 using NadekoBot.Classes;
 using NadekoBot.Extensions;
+using NadekoBot.Modules.LastFm.Handlers;
 
 namespace NadekoBot.Modules.LastFm.Commands
 {
