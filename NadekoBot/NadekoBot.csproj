@@ -223,6 +223,10 @@
     <Compile Include="Modules\Searches\Commands\MemegenCommands.cs" />
     <Compile Include="Modules\Searches\Commands\OsuCommands.cs" />
     <Compile Include="Modules\Searches\Commands\PokemonSearchCommands.cs" />
+    <Compile Include="Modules\Splatoon\Commands\SplatoonCommands.cs" />
+    <Compile Include="Modules\Splatoon\Models\MapSchedule.cs" />
+    <Compile Include="Modules\Splatoon\Models\MapSchedules.cs" />
+    <Compile Include="Modules\Splatoon\SplatoonModule.cs" />
     <Compile Include="Modules\Utility\UtilityModule.cs" />
     <Compile Include="Modules\LastFm\Models\LastFmUserModel.cs" />
     <Compile Include="_Models\DataModels\TestDataModel.cs" />

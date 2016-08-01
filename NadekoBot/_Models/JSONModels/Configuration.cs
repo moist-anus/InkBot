@@ -197,6 +197,7 @@ Nadeko Support Server: <https://discord.gg/0ehQwTK2RBjAxzEY>";
         public string Pokemon { get; set; } = ">";
         public string Utility { get; set; } = ".";
 		public string LastFm { get; set; } = "^";
+        public string Splatoon { get; set; } = "!=";
     }
 
     public static class ConfigHandler

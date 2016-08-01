@@ -100,7 +100,8 @@
     "Programming": "%",
     "Pokemon": ">",
     "Utility": ".",
-    "LastFm": "^"
+    "LastFm": "^^",
+    "Splatoon": "!="
   },
   "ServerBlacklist": [],
   "ChannelBlacklist": [],
