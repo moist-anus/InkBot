@@ -318,7 +318,7 @@ namespace NadekoBot.Modules.LastFm.Commands
 
         private static string CreateTrackMessage(Track track)
         {
-            return $":musical_note: {track.Artist} - {track.Title} :musical_note:";
+            return $"{track.Artist} - {track.Title}";
         }
 
         private static void CreateTrackMessage(Track track, StringBuilder message)
