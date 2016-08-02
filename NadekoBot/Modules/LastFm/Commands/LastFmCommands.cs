@@ -47,6 +47,7 @@ namespace NadekoBot.Modules.LastFm.Commands
                             }
 
                             string message = Timer != null ? "Auto scrobble display stopped." : "Auto scrobble display isn't started.";
+                            e.Channel.SendMessage(message).ConfigureAwait(false);
                             return;
                         }
 
