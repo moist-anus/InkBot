@@ -22,11 +22,11 @@ namespace NadekoBot.Modules.LastFm.Handlers
 
 		public static async Task AssociateUsername(CommandEventArgs e, string lastFmUsername)
 		{
-			var userId = Convert.ToInt64(e.User.Id);
-
 			await Task.Run(() =>
 			{
-				var existingUser = DbHandler.Instance.FindOne<LastFmUser>(t => t.DiscordUserId == userId);
+                var userId = Convert.ToInt64(e.User.Id);
+                var serverId = Convert.ToInt64(e.Server.Id);
+                var existingUser = DbHandler.Instance.FindOne<LastFmUser>(t => t.DiscordUserId == userId);
 
 				if (existingUser != null)
 				{
@@ -34,7 +34,7 @@ namespace NadekoBot.Modules.LastFm.Handlers
 					return;
 				}
 
-				DbHandler.Instance.Save(new LastFmUser { DiscordUserId = userId, LastFmUsername = lastFmUsername });
+				DbHandler.Instance.Save(new LastFmUser { DiscordUserId = userId, DiscordServerId = serverId, LastFmUsername = lastFmUsername });
 				e.Channel.SendMessage($"Set last.fm username to {lastFmUsername}").ConfigureAwait(false);
 			}).ConfigureAwait(false);
 		}
@@ -43,13 +43,23 @@ namespace NadekoBot.Modules.LastFm.Handlers
 		{
 			await Task.Run(() =>
 			{
+                var serverId = Convert.ToInt64(e.Server.Id);
 				var userId = Convert.ToInt64(e.User.Id);
-				var lastFmUser = DbHandler.Instance.FindOne<LastFmUser>(t => t.DiscordUserId == userId);
+				var lastFmUser = DbHandler.Instance.FindOne<LastFmUser>(t => t.DiscordServerId == serverId && t.DiscordUserId == userId);
 				string message = lastFmUser != null ? $"Your last.fm username is {lastFmUser.LastFmUsername}" : "You don't have a last.fm username set.";
 
 				e.Channel.SendMessage(message).ConfigureAwait(false);
 			}).ConfigureAwait(false);
 		}
+
+        public static async Task<string> GetUsername(long serverId, long userId)
+        {
+            return await Task<string>.Run(() =>
+            {
+                var lastFmUser = DbHandler.Instance.FindOne<LastFmUser>(t => t.DiscordServerId == serverId && t.DiscordUserId == userId);
+                return lastFmUser != null ? lastFmUser.LastFmUsername : string.Empty;
+            });
+        }
 
 		public static async Task<string> GetUsername(long userId)
 		{
