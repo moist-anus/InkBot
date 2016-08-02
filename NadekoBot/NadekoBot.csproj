@@ -213,6 +213,7 @@
     <Compile Include="Modules\Gambling\Commands\AnimalRacing.cs" />
     <Compile Include="Modules\LastFm\Commands\LastFmCommands.cs" />
     <Compile Include="Modules\LastFm\LastFmModule.cs" />
+    <Compile Include="Modules\LastFm\Models\LastFmScrobbleModel.cs" />
     <Compile Include="Modules\Music\Classes\PlaylistFullException.cs" />
     <Compile Include="Modules\Programming\Commands\HaskellRepl.cs" />
     <Compile Include="Modules\Programming\ProgrammingModule.cs" />

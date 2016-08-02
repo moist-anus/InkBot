@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Discord.Commands;
+using Lastfm.Services;
 using NadekoBot.Classes;
 using NadekoBot.DataModels;
 using NadekoBot.Modules.LastFm.Models;
@@ -19,6 +20,34 @@ namespace NadekoBot.Modules.LastFm.Handlers
 				return DbHandler.Instance.GetAllRows<LastFmUser>().ToList();
 			}).ConfigureAwait(false);
 		}
+
+        public static async Task SaveScrobble(long serverId, long userId, Track track)
+        {
+            await Task.Run(async () =>
+            {
+                var scrobble = await GetLastScrobble(serverId, userId);
+
+                if (scrobble == null)
+                {
+                    scrobble = new LastFmScrobble(serverId, userId, track.Artist.Name, track.Title, DateTime.Now);
+                }
+                else
+                {
+                    scrobble.Artist = track.Artist.Name;
+                    scrobble.Track = track.Title;
+                }
+
+                DbHandler.Instance.Save(scrobble);
+            });
+        }
+
+        public static async Task<LastFmScrobble> GetLastScrobble(long serverId, long userId)
+        {
+            return await Task.Run(() =>
+            {
+                return DbHandler.Instance.GetLastScrobble(serverId, userId);
+            }).ConfigureAwait(false);
+        }
 
 		public static async Task AssociateUsername(CommandEventArgs e, string lastFmUsername)
 		{

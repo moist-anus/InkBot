@@ -36,6 +36,7 @@ namespace NadekoBot.Classes
             Connection.CreateTable<MusicPlaylist>();
             Connection.CreateTable<Incident>();
 			Connection.CreateTable<LastFmUser>();
+            Connection.CreateTable<LastFmScrobble>();
             Connection.Execute(Queries.TransactionTriggerQuery);
             try
             {
@@ -131,6 +132,11 @@ Limit 20 OFFSET ?", num * 20);
         internal IEnumerable<CurrencyState> GetTopRichest(int n = 10)
         {
             return Connection.Table<CurrencyState>().OrderByDescending(cs => cs.Value).Take(n).ToList();
+        }
+
+        internal LastFmScrobble GetLastScrobble(long serverId, long userId)
+        {
+            return Connection.Table<LastFmScrobble>().Where(s => s.DiscordServerId == serverId && s.DiscordUserId == userId).OrderByDescending(s => s.Scrobbled).FirstOrDefault();
         }
     }
 }

@@ -31,37 +31,19 @@ namespace NadekoBot.Modules.LastFm.Commands
             cgb.CreateCommand(Prefix + "autoscrobble")
                 .Alias("asc")
                 .Description("Starts the auto scrobble display.")
-                .Parameter("interval", ParameterType.Optional)
+                .Parameter("pollRate", ParameterType.Optional)
                 .Do(async e =>
                 {
                     await Task.Run(() =>
                     {
-                        string intervalArgument = e.GetArg("interval")?.Trim();
-                        int interval;
+                        double pollRate;
+                        string pollRateParameter = e.GetArg("pollRate")?.Trim();
 
-                        if (string.IsNullOrEmpty(intervalArgument))
+                        if (string.IsNullOrEmpty(pollRateParameter))
                         {
-                            interval = 5;
+                            pollRate = .5;
                         }
-
-                        string intervalParameter = e.GetArg("interval")?.Trim();
-                        
-
-                        if (int.TryParse(intervalParameter, out interval))
-                        {
-                            if (interval <= 0)
-                            {
-                                e.Channel.SendMessage($"{interval} is an invalid interval.").ConfigureAwait(false);
-                                return;
-                            }
-
-                            Timer = new Timer(interval * 60 * 1000);
-                            Timer.Elapsed += (source, te) => ScrobbleToChannel(source, te, e);
-                            Timer.Enabled = true;
-
-                            e.Channel.SendMessage($"Auto scrobble display started every {interval} minute{(interval > 1 ? "s" : string.Empty)}.").ConfigureAwait(false);
-                        }
-                        else if (string.Equals(intervalParameter, "stop", StringComparison.OrdinalIgnoreCase))
+                        else if (string.Equals(pollRateParameter, "stop", StringComparison.OrdinalIgnoreCase))
                         {
                             string message = Timer != null ? "Auto scrobble display stopped." : "Auto scrobble display isn't started.";
 
@@ -71,7 +53,22 @@ namespace NadekoBot.Modules.LastFm.Commands
                             }
 
                             e.Channel.SendMessage(message).ConfigureAwait(false);
+                            return;
                         }
+                        else
+                        {
+                            if (double.TryParse(pollRateParameter, out pollRate) && pollRate <=0)
+                            {
+                                e.Channel.SendMessage($"{pollRate} is an invalid poll rate.").ConfigureAwait(false);
+                                return;
+                            }
+                        }
+
+                        Timer = new Timer(pollRate * 60 * 1000);
+                        Timer.Elapsed += (source, te) => ScrobbleToChannel(source, te, e);
+                        Timer.Enabled = true;
+
+                        e.Channel.SendMessage($"Auto scrobble display started (polling every {pollRate} minute{(pollRate == 1 ? string.Empty : "s")}).").ConfigureAwait(false);
                     });
                 });
 
@@ -104,7 +101,7 @@ namespace NadekoBot.Modules.LastFm.Commands
                 .Parameter("user", ParameterType.Optional)
                 .Do(async e => await RunForValidUser(e, async m =>
                 {
-                    await SetUserAndResultLimitParameters(e, ()  =>
+                    await SetUserAndResultLimitParameters(e, () =>
                     {
                         LastFmUser.GetTopArtists(Period.Overall).Take(ResultLimit).ForEach(a => CreateArtistMessage(a, m));
                     });
@@ -199,36 +196,56 @@ namespace NadekoBot.Modules.LastFm.Commands
 
         private static async void ScrobbleToChannel(object source, ElapsedEventArgs te, CommandEventArgs e)
         {
-            var message = new StringBuilder();
+            var serverId = Convert.ToInt64(e.Server.Id);
 
-            LastFmUserHandler.GetScrobblers().Result.ForEach(s =>
+            var message = await Task.Run(async () =>
             {
-                var track = new User(s.LastFmUsername, new Session(ApiKey, ApiSecret)).GetNowPlaying();
+                var scrobblesMessage = new StringBuilder();
+                var scrobblers = await LastFmUserHandler.GetScrobblers();
 
-                if (track != null)
+                foreach (var scrobbler in scrobblers)
                 {
-                    message.AppendLine($"{e.Server.GetUser(Convert.ToUInt64(s.DiscordUserId)).Name} is playing: {CreateTrackMessage(track)}");
+                    var track = new User(scrobbler.LastFmUsername, new Session(ApiKey, ApiSecret)).GetNowPlaying();
+
+                    if (track != null)
+                    {
+                        var userId = scrobbler.DiscordUserId;
+                        var lastScrobble = await LastFmUserHandler.GetLastScrobble(serverId, userId);
+                        bool isLastArtist = string.Equals(track.Artist.Name, lastScrobble.Artist, StringComparison.OrdinalIgnoreCase);
+                        bool isLastTitle = string.Equals(track.Title, lastScrobble.Track, StringComparison.OrdinalIgnoreCase);
+                        bool isLastTrack = isLastArtist && isLastTitle;
+
+                        if (isLastTrack)
+                        {
+                            continue;
+                        }
+
+                        await LastFmUserHandler.SaveScrobble(serverId, userId, track);
+                        scrobblesMessage.AppendLine($"{e.Server.GetUser(Convert.ToUInt64(userId)).Name} is playing: {CreateTrackMessage(track)}");
+                    }
                 }
+
+                return scrobblesMessage.ToString();
             });
 
-            if (!string.IsNullOrEmpty(message.ToString()))
+            if (!string.IsNullOrEmpty(message))
             {
-                await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
+                await e.Channel.SendMessage(message).ConfigureAwait(false);
             }
         }
 
         private async Task SetUserAndResultLimitParameters(CommandEventArgs e, Action action)
         {
-            var userArgument = e.GetArg("user")?.Trim();
-            var limitArgument = e.GetArg("limit")?.Trim();
+            var userParameter = e.GetArg("user")?.Trim();
+            var limitParameter = e.GetArg("limit")?.Trim();
 
-            if (string.IsNullOrEmpty(userArgument))
+            if (string.IsNullOrEmpty(userParameter))
             {
                 DiscordUser = e.User;
             }
             else
             {
-                var user = e.Server.FindUsers(userArgument, true).FirstOrDefault();
+                var user = e.Server.FindUsers(userParameter, true).FirstOrDefault();
 
                 if (user != null)
                 {
@@ -236,16 +253,16 @@ namespace NadekoBot.Modules.LastFm.Commands
                 }
                 else
                 {
-                    await e.Channel.SendMessage($"No last.fm user information found for {userArgument}.");
+                    await e.Channel.SendMessage($"No last.fm user information found for {userParameter}.");
                     return;
                 }
             }
 
             int resultLimit;
 
-            if (!string.IsNullOrEmpty(limitArgument))
+            if (!string.IsNullOrEmpty(limitParameter))
             {
-                ResultLimit = int.TryParse(limitArgument, out resultLimit) ? resultLimit : 10;
+                ResultLimit = int.TryParse(limitParameter, out resultLimit) ? resultLimit : 10;
             }
 
             action();
