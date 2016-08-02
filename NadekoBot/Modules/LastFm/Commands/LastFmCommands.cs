@@ -36,32 +36,47 @@ namespace NadekoBot.Modules.LastFm.Commands
                 {
                     await Task.Run(() =>
                     {
-                        double pollRate;
                         string pollRateParameter = e.GetArg("pollRate")?.Trim();
 
-                        if (string.IsNullOrEmpty(pollRateParameter))
+                        // handle stop
+                        if (string.Equals(pollRateParameter, "stop", StringComparison.OrdinalIgnoreCase))
                         {
-                            pollRate = .5;
-                        }
-                        else if (string.Equals(pollRateParameter, "stop", StringComparison.OrdinalIgnoreCase))
-                        {
-                            string message = Timer != null ? "Auto scrobble display stopped." : "Auto scrobble display isn't started.";
-
                             if (Timer != null)
                             {
                                 Timer.Enabled = false;
                             }
 
-                            e.Channel.SendMessage(message).ConfigureAwait(false);
+                            string message = Timer != null ? "Auto scrobble display stopped." : "Auto scrobble display isn't started.";
                             return;
                         }
-                        else
+
+                        double pollRate;
+
+                        // get polling rate
+                        if (string.IsNullOrEmpty(pollRateParameter))
                         {
-                            if (double.TryParse(pollRateParameter, out pollRate) && pollRate <=0)
+                            pollRate = .5;
+                        }
+                        else if (double.TryParse(pollRateParameter, out pollRate) && pollRate <= 0)
+                        {
+                            e.Channel.SendMessage($"{pollRate} is an invalid poll rate.").ConfigureAwait(false);
+                            return;
+                        }
+
+                        // handle already started
+                        if (Timer != null && Timer.Enabled)
+                        {
+                            double currentPollRate = Timer.Interval / 60 / 1000;
+
+                            if (string.IsNullOrEmpty(pollRateParameter) || pollRate == currentPollRate)
                             {
-                                e.Channel.SendMessage($"{pollRate} is an invalid poll rate.").ConfigureAwait(false);
+                                e.Channel.SendMessage($"Auto scrobble already started ({currentPollRate} minute poll rate).").ConfigureAwait(false);
                                 return;
                             }
+
+                            Timer.Interval = pollRate * 60 * 1000;
+                            e.Channel.SendMessage($"Auto scrobble poll rated changed to {pollRate} minute{(pollRate == 1 ? string.Empty : "s")}").ConfigureAwait(false);
+                            return;
                         }
 
                         Timer = new Timer(pollRate * 60 * 1000);
