@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
@@ -179,8 +181,18 @@ namespace NadekoBot.Modules.LastFm.Commands
 						return;
 					}
 
-					var bio = artist.Bio.GetSummary();
-					e.Channel.SendMessage($"{bio}").ConfigureAwait(false);
+					e.Channel.SendMessage($"{artist.Bio.GetSummary()}").ConfigureAwait(false);
+
+					string imageDirectory = "lastfm";
+					Directory.CreateDirectory(imageDirectory);
+					var imageUri = new Uri(artist.GetImageURL(ImageSize.Large));
+					var imagePath = Path.Combine(imageDirectory, Path.GetFileName(imageUri.AbsolutePath));
+
+					using (var webClient = new WebClient())
+					{
+						webClient.DownloadFile(imageUri, imagePath);
+						e.Channel.SendFile(imagePath).ConfigureAwait(false);
+					}
 				}));
 
 			cgb.CreateCommand(Prefix + "setusername")
