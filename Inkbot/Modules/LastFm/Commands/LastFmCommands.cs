@@ -79,6 +79,14 @@ namespace NadekoBot.Modules.LastFm.Commands
 
 		internal override void Init(CommandGroupBuilder cgb)
 		{
+			cgb.CreateCommand(Prefix + "setusername")
+				.Parameter("user", ParameterType.Required)
+				.Do(async e =>
+				{
+					var lastFmUsername = e.GetArg("user").Trim();
+					await LastFmUserHandler.AssociateUsername(e, lastFmUsername);
+				});
+
 			cgb.CreateCommand(Prefix + "getusername")
 				.Parameter("user", ParameterType.Optional)
 				.Do(async e => await RunForValidUser(e, (u, n, m) =>
