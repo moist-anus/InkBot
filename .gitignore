@@ -20,6 +20,8 @@ obj/
 !**/Bin/Debug/sqlite3.dll
 !**/Bin/Debug/credentials_example.json
 Inkbot/bin/debug/*.*
+Inkbot/bin/debug/lastfm
+Inkbot/bin/debug/lastfm/*.*
 Inkbot/bin/debug/data/permissions
 Inkbot/bin/debug/data/incidents
 Inkbot/bin/debug/data/musicdata
