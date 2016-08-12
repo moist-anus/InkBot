@@ -45,3 +45,4 @@ Inkbot.sln.iml
 .idea/vcs.xml
 .idea/modules.xml
 Inkbot/bin/Debug/data/config_xnaas.json
+Inkbot/bin/Debug/credentials.json
