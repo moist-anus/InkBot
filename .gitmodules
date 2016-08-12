@@ -4,3 +4,6 @@
 [submodule "ffmpeg-installer"]
 	path = ffmpeg-installer
 	url = https://github.com/kwoth/ffmpeg-installer
+[submodule "MoistFm"]
+	path = MoistFm
+	url = https://github.com/moist-anus/MoistFm
