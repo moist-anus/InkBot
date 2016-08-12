@@ -8,9 +8,12 @@ using System.Threading.Tasks;
 using System.Timers;
 using Discord.Commands;
 using Lastfm.Services;
+using MoistFm;
+using MoistFm.Models;
 using NadekoBot.Classes;
 using NadekoBot.Extensions;
 using NadekoBot.Modules.LastFm.Handlers;
+using Newtonsoft.Json.Linq;
 
 namespace NadekoBot.Modules.LastFm.Commands
 {
@@ -19,17 +22,263 @@ namespace NadekoBot.Modules.LastFm.Commands
 		public LastFmCommands(DiscordModule module) : base(module)
 		{ }
 
-		private string Username { get; set; } = string.Empty;
-		private Session Session { get; set; } = new Session(ApiKey, ApiSecret);
-		private User LastFmUser { get; set; } = null;
 		private Discord.User DiscordUser { get; set; } = null;
-		private int ResultLimit { get; set; } = 10;
 		private Timer Timer { get; set; } = null;
 		private static string ApiKey { get; set; } = NadekoBot.Creds.LastFmApiKey;
-		private static string ApiSecret { get; set; } = NadekoBot.Creds.LastFmApiSecret;
+		private static LfmService Service { get; set; } = new LfmService(ApiKey);
+
+		private async Task RunForValidUser(CommandEventArgs e, Action<LfmUser, string, StringBuilder> action)
+		{
+			string username = string.Empty;
+			bool isValidUser = await Task<bool>.Run(async () =>
+			{
+				if (e.User == null)
+				{
+					return false;
+				}
+
+				username = await LastFmUserHandler.GetUsername(Convert.ToInt64(e.User.Id));
+
+				if (string.IsNullOrEmpty(username))
+				{
+					await e.Channel.SendMessage("Last.fm username not set.").ConfigureAwait(false);
+					return false;
+				}
+
+				return true;
+			}).ConfigureAwait(false);
+
+			if (isValidUser)
+			{
+				var message = new StringBuilder();
+				var user = new LfmUser(username, Service);
+				var displayName = string.IsNullOrEmpty(e.User.Nickname) ? e.User.Name : e.User.Nickname;
+				action(user, displayName, message);
+
+				if (!string.IsNullOrEmpty(message.ToString())) await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
+			}
+		}
+
+		private string DownloadImage(Uri uri)
+		{
+			string imageDirectory = "lastfm";
+			Directory.CreateDirectory(imageDirectory);
+			var imagePath = Path.Combine(imageDirectory, Path.GetFileName(uri.AbsolutePath));
+
+			using (var webClient = new WebClient())
+			{
+				webClient.DownloadFile(uri, imagePath);
+			}
+
+			return imagePath;
+		}
 
 		internal override void Init(CommandGroupBuilder cgb)
 		{
+			cgb.CreateCommand(Prefix + "userimage")
+				.Do(async e => await RunForValidUser(e, (u, n, m) =>
+				{
+					u.GetInfo();
+					var imageUri = new Uri(u.Images.Where(i => i.Size == "large").FirstOrDefault().Url);
+					var imagePath = DownloadImage(imageUri);
+
+					e.Channel.SendFile(imagePath).ConfigureAwait(false);
+				}));
+
+			cgb.CreateCommand(Prefix + "recent")
+				.Do(async e => await RunForValidUser(e, (u, n, m) =>
+				{
+					u.GetRecentTracks();
+					m.AppendLine($"Recent tracks for **{n}**");
+					u.RecentTracks.Take(5).ForEach(t => m.AppendLine($"{t.Artist.Name} - {t.Name}"));
+				}));
+
+			cgb.CreateCommand(Prefix + "artistsweek")
+				.Do(async e => await RunForValidUser(e, (u, n, m) =>
+				{
+					u.GetWeeklyArtistChart();
+					m.AppendLine($"Top weekly artists for **{n}**");
+					u.WeeklyArtistChart.Take(5).ForEach(a => m.AppendLine($"{a.Name} ({a.Playcount} plays)"));
+				}));
+
+			cgb.CreateCommand(Prefix + "tracksweek")
+				.Do(async e => await RunForValidUser(e, (u, n, m) =>
+				{
+					u.GetWeeklyTrackChart();
+					m.AppendLine($"Top weekly tracks for **{n}**");
+					u.WeeklyTrackChart.Take(5).ForEach(t => m.AppendLine($"{t.Artist.Name} - {t.Name} ({t.Stats.Playcount} plays)"));
+				}));
+
+			cgb.CreateCommand(Prefix + "similar")
+				.Parameter("artist", ParameterType.Required)
+				.Do(async e =>
+				{
+					var artistParameter = e.GetArg("artist").Trim();
+
+					if (string.IsNullOrEmpty(artistParameter))
+					{
+						await e.Channel.SendMessage($"Artist parameter missing for bio command.");
+						return;
+					}
+
+					var artist = new LfmArtist(artistParameter, Service);
+
+					await Task.Run(() =>
+					{
+						artist.GetSimilar();
+					});
+
+					var message = new StringBuilder();
+
+					message.AppendLine($"**Similar** to **{artist.Name}**");
+
+					foreach (var similarArtist in artist.Similar.Take(5))
+					{
+						message.AppendLine($"**{similarArtist.Name}** - {similarArtist.Url}");
+					}
+
+					await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
+				});
+
+			cgb.CreateCommand(Prefix + "bio")
+				.Parameter("artist", ParameterType.Required)
+				.Do(async e =>
+				{
+					var artistParameter = e.GetArg("artist").Trim();
+
+					if (string.IsNullOrEmpty(artistParameter))
+					{
+						await e.Channel.SendMessage($"Artist parameter missing for bio command.");
+						return;
+					}
+
+					var artist = new LfmArtist(artistParameter, Service);
+					artist.GetInfo();
+
+					var message = new StringBuilder();
+
+					message.AppendLine($"**Biography** for **{artist.Name}**");
+					message.AppendLine($"Published on **{artist.Bio.Published.ToString("MMM-dd-yyyy")}**");
+					message.AppendLine($"{artist.Bio.Summary}");
+					message.AppendLine($"**{artist.Stats.Playcount}** plays from **{artist.Stats.Listeners}** listeners");
+
+					await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
+					message.Clear();
+
+					artist.GetTopAlbums();
+					message.AppendLine($"**Top albums**");
+
+					foreach (var album in artist.TopAlbums.Take(5))
+					{
+						message.AppendLine($"{album.Name}");
+					}
+
+					await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
+					message.Clear();
+
+					artist.GetTopTracks();
+
+					message.AppendLine($"**Top tracks**");
+
+					foreach (var track in artist.TopTracks.Take(5))
+					{
+						message.AppendLine($"{track.Name}");
+					}
+
+					await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
+					message.Clear();
+
+					artist.GetTopTags();
+					message.AppendLine($"**Top tags**");
+
+					foreach (var tag in artist.TopTags.Take(5))
+					{
+						message.AppendLine($"{tag.Name}");
+					}
+
+					await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
+
+					var imageUri = new Uri(artist.Images.Where(i => i.Size == "large").FirstOrDefault().Url);
+					var imagePath = DownloadImage(imageUri);
+
+					await e.Channel.SendFile(imagePath).ConfigureAwait(false);
+				});
+
+			cgb.CreateCommand(Prefix + "userinfo")
+				.Description("Displays last.fm user information.")
+				.Do(async e => await RunForValidUser(e, (u, n, m) =>
+				{
+					u.GetInfo();
+
+					m.AppendLine($"Last.fm user info for **{n}**");
+
+					if (!string.IsNullOrEmpty(u.RealName)) m.AppendLine($"**Real name:** {u.RealName}");
+					if (!string.IsNullOrEmpty(u.Url)) m.AppendLine($"**Url:** {u.Url}");
+					if (!string.IsNullOrEmpty(u.Country)) m.AppendLine($"**Country:** {u.Country}");
+					if (u.Age != 0) m.AppendLine($"**Age:** {u.Age}");
+					if (!string.IsNullOrEmpty(u.Gender)) m.AppendLine($"**Gender:** {u.Gender}");
+					if (u.Playcount != 0) m.AppendLine($"**Playcount:** {u.Playcount}");
+					if (u.Playlists != 0) m.AppendLine($"**Playlists:** {u.Playlists}");
+					if (u.Registered.Date != default(DateTime)) m.AppendLine($"**Registered:** {u.Registered.Date.ToString("MMM-dd-yyyy")}");
+
+					u.GetFriends();
+					m.AppendLine($"**Friends**: {u.Friends.Count()}");
+
+					u.GetLovedTracks();
+					m.AppendLine($"**Loved tracks:** {u.LovedTracks.Count()}");
+
+					e.Channel.SendMessage(m.ToString()).ConfigureAwait(false);
+					m.Clear();
+
+					m.AppendLine($"**Top artists:**");
+					u.GetTopArtists();
+					u.TopArtists.Take(5).ForEach(a => m.AppendLine($"{a.Name} ({a.Playcount} plays)"));
+
+					e.Channel.SendMessage(m.ToString()).ConfigureAwait(false);
+					m.Clear();
+
+					m.AppendLine($"**Top tracks:**");
+					u.GetTopTracks();
+					u.TopTracks.Take(5).ForEach(t => m.AppendLine($"{t.Artist.Name} - {t.Name} ({t.Stats.Playcount} plays)"));
+
+					e.Channel.SendMessage(m.ToString()).ConfigureAwait(false);
+					m.Clear();
+
+					m.AppendLine($"**Top tags:**");
+					u.GetTopTags();
+					u.TopTags.Take(5).ForEach(t => m.AppendLine($"{t.Name}"));
+
+					e.Channel.SendMessage(m.ToString()).ConfigureAwait(false);
+					m.Clear();
+
+					m.AppendLine($"**Recent tracks:**");
+					u.GetRecentTracks();
+					u.RecentTracks.Take(5).ForEach(t => m.AppendLine($"{t.Artist.Name} - {t.Name}"));
+
+					e.Channel.SendMessage(m.ToString()).ConfigureAwait(false);
+					m.Clear();
+
+					var imageUri = new Uri(u.Images.Where(i => i.Size == "large").FirstOrDefault().Url);
+					var imagePath = DownloadImage(imageUri);
+
+					e.Channel.SendFile(imagePath).ConfigureAwait(false);
+				}));
+
+			cgb.CreateCommand(Prefix + "nowplaying")
+				.Do(async e => await RunForValidUser(e, (u, n, m) =>
+				{
+					u.GetNowPlaying();
+
+					if (string.IsNullOrEmpty(u.NowPlaying.Artist.Name) || string.IsNullOrEmpty(u.NowPlaying.Name))
+					{
+						m.AppendLine($"No current scrobbles found for **{n}**");
+						return;
+					}
+
+					u.NowPlaying.GetInfo();
+					m.AppendLine(CreateTrackMessage(e.User, u.NowPlaying));
+				}));
+
 			cgb.CreateCommand(Prefix + "autoscrobble")
 					.Alias("asc")
 					.Description("Starts the auto scrobble display.")
@@ -38,339 +287,94 @@ namespace NadekoBot.Modules.LastFm.Commands
 					{
 						await Task.Run(() =>
 									{
-								string pollRateParameter = e.GetArg("pollRate")?.Trim();
+										string pollRateParameter = e.GetArg("pollRate")?.Trim();
 
-								if (string.Equals(pollRateParameter, "stop", StringComparison.OrdinalIgnoreCase))
-								{
-									if (Timer != null)
-									{
-										Timer.Enabled = false;
-									}
+										if (string.Equals(pollRateParameter, "stop", StringComparison.OrdinalIgnoreCase))
+										{
+											if (Timer != null)
+											{
+												Timer.Enabled = false;
+											}
 
-									string message = Timer != null ? "Auto scrobble display stopped." : "Auto scrobble display isn't started.";
-									e.Channel.SendMessage(message).ConfigureAwait(false);
-									return;
-								}
+											string message = Timer != null ? "**Auto scrobble** stopped." : "**Auto scrobble** display isn't started.";
+											e.Channel.SendMessage(message).ConfigureAwait(false);
+											return;
+										}
 
-								double pollRate;
+										double pollRate;
 
-								if (string.IsNullOrEmpty(pollRateParameter))
-								{
-									pollRate = .5;
-								}
-								else if (double.TryParse(pollRateParameter, out pollRate) && pollRate <= 0)
-								{
-									e.Channel.SendMessage($"{pollRate} is an invalid poll rate.").ConfigureAwait(false);
-									return;
-								}
+										if (string.IsNullOrEmpty(pollRateParameter))
+										{
+											pollRate = .5;
+										}
+										else if (double.TryParse(pollRateParameter, out pollRate) && pollRate <= 0)
+										{
+											e.Channel.SendMessage($"**{pollRate}** is an invalid poll rate.").ConfigureAwait(false);
+											return;
+										}
 
-								if (Timer != null && Timer.Enabled)
-								{
-									double currentPollRate = Timer.Interval / 60 / 1000;
+										if (Timer != null && Timer.Enabled)
+										{
+											double currentPollRate = Timer.Interval / 60 / 1000;
 
-									if (string.IsNullOrEmpty(pollRateParameter) || pollRate == currentPollRate)
-									{
-										e.Channel.SendMessage($"Auto scrobble already started ({currentPollRate} minute poll rate).").ConfigureAwait(false);
-										return;
-									}
+											if (string.IsNullOrEmpty(pollRateParameter) || pollRate == currentPollRate)
+											{
+												e.Channel.SendMessage($"**Auto scrobble** already started (**{currentPollRate}** minute poll rate).").ConfigureAwait(false);
+												return;
+											}
 
-									Timer.Interval = pollRate * 60 * 1000;
-									e.Channel.SendMessage($"Auto scrobble poll rated changed to {pollRate} minute{(pollRate == 1 ? string.Empty : "s")}").ConfigureAwait(false);
-									return;
-								}
+											Timer.Interval = pollRate * 60 * 1000;
+											e.Channel.SendMessage($"**Auto scrobble** poll rated changed to **{pollRate}** minute{(pollRate == 1 ? string.Empty : "s")}").ConfigureAwait(false);
+											return;
+										}
 
-								Timer = new Timer(pollRate * 60 * 1000);
-								Timer.Elapsed += (source, te) => ScrobbleToChannel(source, te, e);
-								Timer.Enabled = true;
+										Timer = new Timer(pollRate * 60 * 1000);
+										Timer.Elapsed += (source, te) => ScrobbleToChannel(source, te, e);
+										Timer.Enabled = true;
 
-								e.Channel.SendMessage($"Auto scrobble display started (polling every {pollRate} minute{(pollRate == 1 ? string.Empty : "s")}).").ConfigureAwait(false);
-							});
+										e.Channel.SendMessage($"**Auto scrobble** started (polling every **{pollRate}** minute{(pollRate == 1 ? string.Empty : "s")}).").ConfigureAwait(false);
+									});
 					});
+		}
 
-			cgb.CreateCommand(Prefix + "nowplaying")
-					.Alias(Prefix + "np")
-					.Description("Displays the current scrobbled track.")
-					.Do(async e => await RunForValidUser(e, m =>
-					{
-						var nowPlaying = LastFmUser.GetNowPlaying();
-						m.AppendLine(nowPlaying == null ? "You're not scrobbling anything." : CreateTrackMessage(nowPlaying));
-					}));
+		private static string CreateTrackMessage(Discord.User user, LfmTrack track)
+		{
+			var message = new StringBuilder();
+			message.Append($"**{(string.IsNullOrEmpty(user.Nickname) ? user.Name : user.Nickname)}** is playing **{track.Artist.Name}** - **{track.Name}**");
 
-			cgb.CreateCommand(Prefix + "toptracks")
-					.Alias(Prefix + "tt")
-					.Description("Displays the overall top tracks.")
-					.Parameter("limit", ParameterType.Optional)
-					.Parameter("user", ParameterType.Optional)
-					.Do(async e => await RunForValidUser(e, async m =>
-					{
-						await SetUserAndResultLimitParameters(e, () =>
-									{
-								LastFmUser.GetTopTracks(Period.Overall).Take(ResultLimit).ForEach(t => CreateTrackMessage(t, m));
-							});
-					}));
+			if (track.Duration != 0) message.Append($" ({track.Length.ToString(@"m\:ss")})");
+			if (!string.IsNullOrEmpty(track.Album.Name)) message.Append($" from **{track.Album.Name}**");
 
-			cgb.CreateCommand(Prefix + "topartists")
-					.Alias(Prefix + "ta")
-					.Description("Displays the overall top artists.")
-					.Parameter("limit", ParameterType.Optional)
-					.Parameter("user", ParameterType.Optional)
-					.Do(async e => await RunForValidUser(e, async m =>
-					{
-						await SetUserAndResultLimitParameters(e, () =>
-									{
-								LastFmUser.GetTopArtists(Period.Overall).Take(ResultLimit).ForEach(a => CreateArtistMessage(a, m));
-							});
-					}));
-
-			cgb.CreateCommand(Prefix + "tracksweek")
-					.Description("Displays the top weekly tracks.")
-					.Parameter("limit", ParameterType.Optional)
-					.Parameter("user", ParameterType.Optional)
-					.Do(async e => await RunForValidUser(e, async m =>
-					{
-						await SetUserAndResultLimitParameters(e, () =>
-									{
-								LastFmUser.GetWeeklyTrackChart().Take(ResultLimit).ForEach(c => CreateWeeklyTrackMessage(c, m));
-							});
-					}));
-
-			cgb.CreateCommand(Prefix + "artistsweek")
-					.Description("Displays the top weekly artists.")
-					.Parameter("limit", ParameterType.Optional)
-					.Parameter("user", ParameterType.Optional)
-					.Do(async e => await RunForValidUser(e, async m =>
-					{
-						await SetUserAndResultLimitParameters(e, () =>
-									{
-								LastFmUser.GetWeeklyArtistChart().Take(ResultLimit).ForEach(a => CreateWeeklyArtistMessage(a, m));
-							});
-					}));
-
-			cgb.CreateCommand(Prefix + "recent")
-					.Description("Displays recent scrobbles.")
-					.Parameter("limit", ParameterType.Optional)
-					.Parameter("user", ParameterType.Optional)
-					.Do(async e => await RunForValidUser(e, async m =>
-					{
-						await SetUserAndResultLimitParameters(e, () =>
-									{
-								LastFmUser.GetRecentTracks(ResultLimit).ForEach(t => CreateTrackMessage(t, m));
-							});
-					}));
-
-			cgb.CreateCommand(Prefix + "similar")
-					.Alias(Prefix + "sim")
-					.Description("Displays similar artists.")
-					.Parameter("artist", ParameterType.Required)
-					.Do(async e => await RunForValidUser(e, m =>
-					{
-						new Artist(e.GetArg("artist")?.Trim(), Session).GetSimilar().Take(10).ForEach(s => m.AppendLine($"{s.Name}"));
-					}));
-
-			cgb.CreateCommand(Prefix + "bio")
-				.Description("Displays artist biography.")
-				.Parameter("artist", ParameterType.Required)
-				.Do(async e => await RunForValidUser(e, m =>
-				{
-					var artistParameter = e.GetArg("artist").Trim();
-					var artist = new Artist(artistParameter, Session);
-
-					if (artist == null)
-					{
-						e.Channel.SendMessage($"{artistParameter} not found.").ConfigureAwait(false);
-						return;
-					}
-
-					e.Channel.SendMessage($"{artist.Bio.GetSummary()}").ConfigureAwait(false);
-
-					string imageDirectory = "lastfm";
-					Directory.CreateDirectory(imageDirectory);
-					var imageUri = new Uri(artist.GetImageURL(ImageSize.Large));
-					var imagePath = Path.Combine(imageDirectory, Path.GetFileName(imageUri.AbsolutePath));
-
-					using (var webClient = new WebClient())
-					{
-						webClient.DownloadFile(imageUri, imagePath);
-						e.Channel.SendFile(imagePath).ConfigureAwait(false);
-					}
-				}));
-
-			cgb.CreateCommand(Prefix + "setusername")
-					.Alias(Prefix + "su")
-					.Description("Sets a last.fm username.")
-					.Parameter("lastFmUsername", ParameterType.Required)
-					.Do(async e =>
-					{
-						var lastFmUsername = e.GetArg("lastFmUsername")?.Trim();
-						await LastFmUserHandler.AssociateUsername(e, lastFmUsername);
-					});
-
-			cgb.CreateCommand(Prefix + "getusername")
-					.Alias(Prefix + "gu")
-					.Description("Displays the set last.fm username.")
-					.Parameter("user", ParameterType.Optional)
-					.Do(async e =>
-					{
-						var lookupUser = e.GetArg("user")?.Trim();
-
-						if (string.IsNullOrEmpty(lookupUser))
-						{
-							await LastFmUserHandler.DisplayUsername(e);
-						}
-						else
-						{
-							var users = e.Server.FindUsers(lookupUser, true);
-							string message;
-
-							if (users.Count() == 1)
-							{
-								var username = await LastFmUserHandler.GetUsername(Convert.ToInt64(users.First().Id));
-								message = $"{lookupUser}'s last.fm account is {username}.";
-							}
-							else
-							{
-								message = $"No last.fm account information found for {lookupUser}.";
-							}
-
-							await e.Channel.SendMessage(message).ConfigureAwait(false);
-						}
-					});
+			return message.ToString();
 		}
 
 		private static async void ScrobbleToChannel(object source, ElapsedEventArgs te, CommandEventArgs e)
 		{
 			var serverId = Convert.ToInt64(e.Server.Id);
+			var scrobblers = await LastFmUserHandler.GetScrobblers();
 
-			var message = await Task.Run(async () =>
+			foreach (var scrobbler in scrobblers)
 			{
-				var scrobblesMessage = new StringBuilder();
-				var scrobblers = await LastFmUserHandler.GetScrobblers();
+				var user = new LfmUser(scrobbler.LastFmUsername, new LfmService(ApiKey));
+				var userId = scrobbler.DiscordUserId;
+				user.GetNowPlaying();
 
-				foreach (var scrobbler in scrobblers)
+				if (!string.IsNullOrEmpty(user.NowPlaying.Name))
 				{
-					var track = new User(scrobbler.LastFmUsername, new Session(ApiKey, ApiSecret)).GetNowPlaying();
+					user.NowPlaying.GetInfo();
+					var lastScrobble = await LastFmUserHandler.GetLastScrobble(serverId, userId);
+					bool isLastArtist = string.Equals(user.NowPlaying.Artist.Name, lastScrobble.Artist, StringComparison.OrdinalIgnoreCase);
+					bool isLastTitle = string.Equals(user.NowPlaying.Name, lastScrobble.Track, StringComparison.OrdinalIgnoreCase);
+					bool isLastTrack = isLastArtist && isLastTitle;
 
-					if (track != null)
+					if (!isLastTrack)
 					{
-						var userId = scrobbler.DiscordUserId;
-						var lastScrobble = await LastFmUserHandler.GetLastScrobble(serverId, userId);
-						bool isLastArtist = string.Equals(track.Artist.Name, lastScrobble.Artist, StringComparison.OrdinalIgnoreCase);
-						bool isLastTitle = string.Equals(track.Title, lastScrobble.Track, StringComparison.OrdinalIgnoreCase);
-						bool isLastTrack = isLastArtist && isLastTitle;
-
-						if (isLastTrack)
-						{
-							continue;
-						}
-
-						await LastFmUserHandler.SaveScrobble(serverId, userId, track);
-						scrobblesMessage.AppendLine($"{e.Server.GetUser(Convert.ToUInt64(userId)).Name} is playing: {CreateTrackMessage(track)}");
+						var discordUser = e.Channel.Users.Where(u => u.Id == Convert.ToUInt64(userId)).FirstOrDefault();
+						await LastFmUserHandler.SaveScrobble(serverId, userId, user.NowPlaying);
+						await e.Channel.SendMessage(CreateTrackMessage(discordUser, user.NowPlaying)).ConfigureAwait(false);
 					}
 				}
-
-				return scrobblesMessage.ToString();
-			});
-
-			if (!string.IsNullOrEmpty(message))
-			{
-				await e.Channel.SendMessage(message).ConfigureAwait(false);
 			}
-		}
-
-		private async Task SetUserAndResultLimitParameters(CommandEventArgs e, Action action)
-		{
-			var userParameter = e.GetArg("user")?.Trim();
-			var limitParameter = e.GetArg("limit")?.Trim();
-
-			if (string.IsNullOrEmpty(userParameter))
-			{
-				DiscordUser = e.User;
-			}
-			else
-			{
-				var user = e.Server.FindUsers(userParameter, true).FirstOrDefault();
-
-				if (user != null)
-				{
-					DiscordUser = user;
-				}
-				else
-				{
-					await e.Channel.SendMessage($"No last.fm user information found for {userParameter}.");
-					return;
-				}
-			}
-
-			int resultLimit;
-
-			if (!string.IsNullOrEmpty(limitParameter))
-			{
-				ResultLimit = int.TryParse(limitParameter, out resultLimit) ? resultLimit : 10;
-			}
-
-			action();
-		}
-
-		private async Task RunForValidUser(CommandEventArgs e, Action<StringBuilder> action)
-		{
-			bool isValidUser = await Task<bool>.Run(async () =>
-			{
-				if (e.User == null)
-				{
-					return false;
-				}
-
-				Username = await LastFmUserHandler.GetUsername(Convert.ToInt64(e.User.Id));
-
-				if (string.IsNullOrEmpty(Username))
-				{
-					LastFmUser = null;
-					await e.Channel.SendMessage("Last.fm username not set.").ConfigureAwait(false);
-					return false;
-				}
-				else
-				{
-					LastFmUser = new User(Username, Session);
-					return true;
-				}
-			}).ConfigureAwait(false);
-
-			if (isValidUser)
-			{
-				var message = new StringBuilder();
-				action(message);
-				await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
-			}
-		}
-
-		private static string CreateTrackMessage(Track track)
-		{
-			return $"{track.Artist} - {track.Title}";
-		}
-
-		private static void CreateTrackMessage(Track track, StringBuilder message)
-		{
-			message.AppendLine(CreateTrackMessage(track));
-		}
-
-		private static void CreateTrackMessage(TopTrack topTrack, StringBuilder message)
-		{
-			message.AppendLine($"{topTrack.Item.Artist} - {topTrack.Item.Title} : {topTrack.Weight} plays");
-		}
-
-		private static void CreateWeeklyArtistMessage(WeeklyArtistChartItem item, StringBuilder message)
-		{
-			message.AppendLine($"{item.Artist} : {item.Playcount} plays");
-		}
-
-		private static void CreateWeeklyTrackMessage(WeeklyTrackChartItem item, StringBuilder message)
-		{
-			message.AppendLine($"{item.Track.Artist} - {item.Track.Title} : {item.Playcount} plays");
-		}
-
-		private static void CreateArtistMessage(TopArtist topArtist, StringBuilder message)
-		{
-			message.AppendLine($"{topArtist.Item.Name} : {topArtist.Weight} plays");
 		}
 	}
 }

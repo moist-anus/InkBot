@@ -11,7 +11,7 @@ namespace NadekoBot.Modules.LastFm.Models
 	{
 		public long DiscordUserId { get; set; }
 
-        public long DiscordServerId { get; set; }
+    public long DiscordServerId { get; set; }
 
 		public string LastFmUsername { get; set; }
 	}

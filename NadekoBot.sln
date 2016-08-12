@@ -12,6 +12,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Discord.Net.Modules", "disc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Discord.Net.Commands", "discord.net\src\Discord.Net.Commands.Net45\Discord.Net.Commands.csproj", "{1B5603B4-6F8F-4289-B945-7BAAE523D740}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoistFm", "..\MoistFm\MoistFm\MoistFm\MoistFm.csproj", "{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MoistFm.Test", "..\MoistFm\MoistFm\MoistFm.Test\MoistFm.Test.csproj", "{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		discord.net\src\Discord.Net.Shared\Discord.Net.Shared.projitems*{1b5603b4-6f8f-4289-b945-7baae523d740}*SharedItemsImports = 4
@@ -110,6 +114,38 @@ Global
 		{1B5603B4-6F8F-4289-B945-7BAAE523D740}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1B5603B4-6F8F-4289-B945-7BAAE523D740}.Release|x64.ActiveCfg = Release|Any CPU
 		{1B5603B4-6F8F-4289-B945-7BAAE523D740}.Release|x64.Build.0 = Release|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.Debug|x64.Build.0 = Debug|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.FullDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.FullDebug|Any CPU.Build.0 = Debug|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.FullDebug|x64.ActiveCfg = Debug|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.FullDebug|x64.Build.0 = Debug|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.NadekoRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.NadekoRelease|Any CPU.Build.0 = Release|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.NadekoRelease|x64.ActiveCfg = Release|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.NadekoRelease|x64.Build.0 = Release|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.Release|x64.ActiveCfg = Release|Any CPU
+		{B980AC7C-389D-4D14-B8A7-1BA3337AC65C}.Release|x64.Build.0 = Release|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.Debug|x64.Build.0 = Debug|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.FullDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.FullDebug|Any CPU.Build.0 = Debug|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.FullDebug|x64.ActiveCfg = Debug|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.FullDebug|x64.Build.0 = Debug|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.NadekoRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.NadekoRelease|Any CPU.Build.0 = Release|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.NadekoRelease|x64.ActiveCfg = Release|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.NadekoRelease|x64.Build.0 = Release|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.Release|x64.ActiveCfg = Release|Any CPU
+		{4599CA7E-F88C-4A4F-8D5F-E9FA0DE58EEF}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

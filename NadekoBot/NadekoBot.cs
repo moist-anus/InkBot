@@ -183,7 +183,7 @@ namespace NadekoBot
             modules.Add(new CustomReactionsModule(), "Customreactions", ModuleFilter.None);
             if (!string.IsNullOrWhiteSpace(Creds.TrelloAppKey))
                 modules.Add(new TrelloModule(), "Trello", ModuleFilter.None);
-			if (!string.IsNullOrEmpty(Creds.LastFmApiKey) && !string.IsNullOrEmpty(Creds.LastFmApiSecret))
+			if (!string.IsNullOrEmpty(Creds.LastFmApiKey))
 				modules.Add(new LastFmModule(), "LastFm", ModuleFilter.None);
             modules.Add(new SplatoonModule(), "Splatoon", ModuleFilter.None);
             //run the bot

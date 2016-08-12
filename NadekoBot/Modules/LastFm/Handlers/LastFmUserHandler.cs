@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Discord.Commands;
 using Lastfm.Services;
+using MoistFm.Models;
 using NadekoBot.Classes;
 using NadekoBot.DataModels;
 using NadekoBot.Modules.LastFm.Models;
@@ -21,7 +22,7 @@ namespace NadekoBot.Modules.LastFm.Handlers
 			}).ConfigureAwait(false);
 		}
 
-		public static async Task SaveScrobble(long serverId, long userId, Track track)
+		public static async Task SaveScrobble(long serverId, long userId, LfmTrack track)
 		{
 			await Task.Run(async () =>
 			{
@@ -29,12 +30,12 @@ namespace NadekoBot.Modules.LastFm.Handlers
 
 				if (scrobble == null)
 				{
-					scrobble = new LastFmScrobble(serverId, userId, track.Artist.Name, track.Title, DateTime.Now);
+					scrobble = new LastFmScrobble(serverId, userId, track.Artist.Name, track.Name, DateTime.Now);
 				}
 				else
 				{
 					scrobble.Artist = track.Artist.Name;
-					scrobble.Track = track.Title;
+					scrobble.Track = track.Name;
 				}
 
 				DbHandler.Instance.Save(scrobble);
@@ -64,7 +65,7 @@ namespace NadekoBot.Modules.LastFm.Handlers
 				}
 
 				DbHandler.Instance.Save(new LastFmUser { DiscordUserId = userId, DiscordServerId = serverId, LastFmUsername = lastFmUsername });
-				e.Channel.SendMessage($"Set last.fm username to {lastFmUsername}").ConfigureAwait(false);
+				e.Channel.SendMessage($"Set last.fm username to **{lastFmUsername}**").ConfigureAwait(false);
 			}).ConfigureAwait(false);
 		}
 
@@ -75,7 +76,7 @@ namespace NadekoBot.Modules.LastFm.Handlers
 				var serverId = Convert.ToInt64(e.Server.Id);
 				var userId = Convert.ToInt64(e.User.Id);
 				var lastFmUser = DbHandler.Instance.FindOne<LastFmUser>(t => t.DiscordServerId == serverId && t.DiscordUserId == userId);
-				string message = lastFmUser != null ? $"Your last.fm username is {lastFmUser.LastFmUsername}" : "You don't have a last.fm username set.";
+				string message = lastFmUser != null ? $"Your last.fm username is **{lastFmUser.LastFmUsername}**" : "You don't have a last.fm username set.";
 
 				e.Channel.SendMessage(message).ConfigureAwait(false);
 			}).ConfigureAwait(false);

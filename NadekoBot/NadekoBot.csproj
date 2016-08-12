@@ -557,6 +557,10 @@
     <None Include="resources\images\cards\2_of_clubs.jpg" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\MoistFm\MoistFm\MoistFm\MoistFm.csproj">
+      <Project>{b980ac7c-389d-4d14-b8a7-1ba3337ac65c}</Project>
+      <Name>MoistFm</Name>
+    </ProjectReference>
     <ProjectReference Include="..\discord.net\src\Discord.Net.Audio.Net45\Discord.Net.Audio.csproj">
       <Project>{7bfef748-b934-4621-9b11-6302e3a9f6b3}</Project>
       <Name>Discord.Net.Audio</Name>
