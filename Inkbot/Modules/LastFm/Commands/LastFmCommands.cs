@@ -79,6 +79,13 @@ namespace NadekoBot.Modules.LastFm.Commands
 
 		internal override void Init(CommandGroupBuilder cgb)
 		{
+			cgb.CreateCommand(Prefix + "getusername")
+				.Parameter("user", ParameterType.Optional)
+				.Do(async e => await RunForValidUser(e, (u, n, m) =>
+				{
+					m.AppendLine($"**{n}**'s last.fm username is **{u.Name}**");
+				}));
+
 			cgb.CreateCommand(Prefix + "userimage")
 				.Parameter("user", ParameterType.Optional)
 				.Do(async e => await RunForValidUser(e, (u, n, m) =>
