@@ -19,12 +19,12 @@ obj/
 !**/Bin/Debug/WebSocket4Net.dll
 !**/Bin/Debug/sqlite3.dll
 !**/Bin/Debug/credentials_example.json
-NadekoBot/bin/debug/*.*
-NadekoBot/bin/debug/data/permissions
-NadekoBot/bin/debug/data/incidents
-NadekoBot/bin/debug/data/musicdata
-NadekoBot/bin/NadekoRelease/*.*
-!NadekoBot/bin/Debug/data/currency_images/*
+Inkbot/bin/debug/*.*
+Inkbot/bin/debug/data/permissions
+Inkbot/bin/debug/data/incidents
+Inkbot/bin/debug/data/musicdata
+Inkbot/bin/NadekoRelease/*.*
+!Inkbot/bin/Debug/data/currency_images/*
 Tests/bin
 
 # NuGet Packages
@@ -35,11 +35,11 @@ Tests/bin
 !**/packages/build/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/packages/repositories.config
-NadekoBot/bin/Debug/data/nadekobot.sqlite
-NadekoBot/bin/Debug/data/config.json
-NadekoBot/bin/Debug/data/ServerSpecificConfigs.json
-NadekoBot.sln.iml
+Inkbot/bin/Debug/data/nadekobot.sqlite
+Inkbot/bin/Debug/data/config.json
+Inkbot/bin/Debug/data/ServerSpecificConfigs.json
+Inkbot.sln.iml
 .idea/workspace.xml
 .idea/vcs.xml
 .idea/modules.xml
-NadekoBot/bin/Debug/data/config_xnaas.json
+Inkbot/bin/Debug/data/config_xnaas.json
