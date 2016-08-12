@@ -29,7 +29,9 @@ namespace NadekoBot.Modules.LastFm.Commands
 
 		private async Task RunForValidUser(CommandEventArgs e, Action<LfmUser, string, StringBuilder> action)
 		{
-			string username = string.Empty;
+			var userParameter = e.GetArg("user");
+			string lastFmUsername = string.Empty;
+			Discord.User discordUser = null;
 			bool isValidUser = await Task<bool>.Run(async () =>
 			{
 				if (e.User == null)
@@ -37,9 +39,10 @@ namespace NadekoBot.Modules.LastFm.Commands
 					return false;
 				}
 
-				username = await LastFmUserHandler.GetUsername(Convert.ToInt64(e.User.Id));
+				discordUser = string.IsNullOrEmpty(userParameter) ? e.User : e.Server.Users.Where(u => u.Name == userParameter || u.Nickname == userParameter).FirstOrDefault();
+				lastFmUsername = await LastFmUserHandler.GetUsername(Convert.ToInt64(discordUser.Id));
 
-				if (string.IsNullOrEmpty(username))
+				if (string.IsNullOrEmpty(lastFmUsername))
 				{
 					await e.Channel.SendMessage("Last.fm username not set.").ConfigureAwait(false);
 					return false;
@@ -51,8 +54,9 @@ namespace NadekoBot.Modules.LastFm.Commands
 			if (isValidUser)
 			{
 				var message = new StringBuilder();
-				var user = new LfmUser(username, Service);
-				var displayName = string.IsNullOrEmpty(e.User.Nickname) ? e.User.Name : e.User.Nickname;
+				var user = new LfmUser(lastFmUsername, Service);
+				var displayName = string.IsNullOrEmpty(discordUser.Nickname) ? discordUser.Name : discordUser.Nickname;
+				
 				action(user, displayName, message);
 
 				if (!string.IsNullOrEmpty(message.ToString())) await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
@@ -76,9 +80,18 @@ namespace NadekoBot.Modules.LastFm.Commands
 		internal override void Init(CommandGroupBuilder cgb)
 		{
 			cgb.CreateCommand(Prefix + "userimage")
+				.Parameter("user", ParameterType.Optional)
 				.Do(async e => await RunForValidUser(e, (u, n, m) =>
 				{
 					u.GetInfo();
+					var url = u.Images.Where(i => string.Equals(i.Size, "large", StringComparison.OrdinalIgnoreCase)).FirstOrDefault().Url;
+
+					if (string.IsNullOrEmpty(url))
+					{
+						e.Channel.SendMessage($"No image found for **{n}**");
+						return;
+					}
+
 					var imageUri = new Uri(u.Images.Where(i => i.Size == "large").FirstOrDefault().Url);
 					var imagePath = DownloadImage(imageUri);
 
@@ -86,6 +99,7 @@ namespace NadekoBot.Modules.LastFm.Commands
 				}));
 
 			cgb.CreateCommand(Prefix + "recent")
+				.Parameter("user", ParameterType.Optional)
 				.Do(async e => await RunForValidUser(e, (u, n, m) =>
 				{
 					u.GetRecentTracks();
@@ -94,6 +108,7 @@ namespace NadekoBot.Modules.LastFm.Commands
 				}));
 
 			cgb.CreateCommand(Prefix + "artistsweek")
+				.Parameter("user", ParameterType.Optional)
 				.Do(async e => await RunForValidUser(e, (u, n, m) =>
 				{
 					u.GetWeeklyArtistChart();
@@ -102,6 +117,7 @@ namespace NadekoBot.Modules.LastFm.Commands
 				}));
 
 			cgb.CreateCommand(Prefix + "tracksweek")
+				.Parameter("user", ParameterType.Optional)
 				.Do(async e => await RunForValidUser(e, (u, n, m) =>
 				{
 					u.GetWeeklyTrackChart();
@@ -206,6 +222,7 @@ namespace NadekoBot.Modules.LastFm.Commands
 
 			cgb.CreateCommand(Prefix + "userinfo")
 				.Description("Displays last.fm user information.")
+				.Parameter("user", ParameterType.Optional)
 				.Do(async e => await RunForValidUser(e, (u, n, m) =>
 				{
 					u.GetInfo();
@@ -265,6 +282,7 @@ namespace NadekoBot.Modules.LastFm.Commands
 				}));
 
 			cgb.CreateCommand(Prefix + "nowplaying")
+				.Parameter("user", ParameterType.Optional)
 				.Do(async e => await RunForValidUser(e, (u, n, m) =>
 				{
 					u.GetNowPlaying();
