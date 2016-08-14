@@ -4,109 +4,134 @@ using System.Diagnostics;
 
 namespace NadekoBot.Classes.JSONModels
 {
-    public class Credentials
-    {
-        public string Token { get; set; } = "";
-        public string ClientId { get; set; } = "170254782546575360";
-        public ulong BotId { get; set; } = 1231231231231;
-        public ulong[] OwnerIds { get; set; } = { 123123123123, 5675675679845 };
-        public string GoogleAPIKey { get; set; } = "";
-        public string SoundCloudClientID { get; set; } = "";
-        public string MashapeKey { get; set; } = "";
-        public string LOLAPIKey { get; set; } = "";
-        public string TrelloAppKey { get; set; } = "";
-        public string CarbonKey { get; set; } = "";
-        public string OsuAPIKey { get; set; } = "";
+	public class Credentials
+	{
+		public string Token { get; set; } = "";
+
+		public string ClientId { get; set; } = "170254782546575360";
+
+		public ulong BotId { get; set; } = 1231231231231;
+
+		public ulong[] OwnerIds { get; set; } = { 123123123123, 5675675679845 };
+
+		public string GoogleAPIKey { get; set; } = "";
+
+		public string SoundCloudClientID { get; set; } = "";
+
+		public string MashapeKey { get; set; } = "";
+
+		public string LOLAPIKey { get; set; } = "";
+
+		public string TrelloAppKey { get; set; } = "";
+
+		public string CarbonKey { get; set; } = "";
+
+		public string OsuAPIKey { get; set; } = "";
+
 		public string LastFmApiKey { get; set; } = "";
-    }
-    [DebuggerDisplay("{items[0].id.playlistId}")]
-    public class YoutubePlaylistSearch
-    {
-        public YtPlaylistItem[] items { get; set; }
-    }
-    public class YtPlaylistItem
-    {
-        public YtPlaylistId id { get; set; }
-    }
-    public class YtPlaylistId
-    {
-        public string kind { get; set; }
-        public string playlistId { get; set; }
-    }
-    [DebuggerDisplay("{items[0].id.videoId}")]
-    public class YoutubeVideoSearch
-    {
-        public YtVideoItem[] items { get; set; }
-    }
-    public class YtVideoItem
-    {
-        public YtVideoId id { get; set; }
-    }
-    public class YtVideoId
-    {
-        public string kind { get; set; }
-        public string videoId { get; set; }
-    }
-    public class PlaylistItemsSearch
-    {
-        public string nextPageToken { get; set; }
-        public PlaylistItem[] items { get; set; }
-    }
-    public class PlaylistItem
-    {
-        public YtVideoId contentDetails { get; set; }
-    }
+	}
 
-    #region wikpedia example
-    //    {
-    //    "batchcomplete": true,
-    //    "query": {
-    //        "normalized": [
-    //            {
-    //                "from": "u3fn92fb32f9yb329f32",
-    //                "to": "U3fn92fb32f9yb329f32"
-    //            }
-    //        ],
-    //        "pages": [
-    //            {
-    //                "ns": 0,
-    //                "title": "U3fn92fb32f9yb329f32",
-    //                "missing": true,
-    //                "contentmodel": "wikitext",
-    //                "pagelanguage": "en",
-    //                "pagelanguagehtmlcode": "en",
-    //                "pagelanguagedir": "ltr",
-    //                "fullurl": "https://en.wikipedia.org/wiki/U3fn92fb32f9yb329f32",
-    //                "editurl": "https://en.wikipedia.org/w/index.php?title=U3fn92fb32f9yb329f32&action=edit",
-    //                "canonicalurl": "https://en.wikipedia.org/wiki/U3fn92fb32f9yb329f32"
-    //            }
-    //        ]
-    //    }
-    //}
-    #endregion
+	[DebuggerDisplay("{items[0].id.playlistId}")]
+	public class YoutubePlaylistSearch
+	{
+		public YtPlaylistItem[] items { get; set; }
+	}
 
-    public class WikipediaApiModel
-    {
-        public WikipediaQuery Query { get; set; }
-    }
+	public class YtPlaylistItem
+	{
+		public YtPlaylistId id { get; set; }
+	}
 
-    public class WikipediaQuery
-    {
-        public WikipediaPage[] Pages { get; set; }
-    }
+	public class YtPlaylistId
+	{
+		public string kind { get; set; }
 
-    public class WikipediaPage
-    {
-        public bool Missing { get; set; } = false;
-        public string FullUrl { get; set; }
-    }
+		public string playlistId { get; set; }
+	}
 
-    public class WoWJoke
-    {
-        public string Question { get; set; }
-        public string Answer { get; set; }
-        public override string ToString() => $"`{Question}`\n\n**{Answer}**";
-    }
+	[DebuggerDisplay("{items[0].id.videoId}")]
+	public class YoutubeVideoSearch
+	{
+		public YtVideoItem[] items { get; set; }
+	}
+
+	public class YtVideoItem
+	{
+		public YtVideoId id { get; set; }
+	}
+
+	public class YtVideoId
+	{
+		public string kind { get; set; }
+
+		public string videoId { get; set; }
+	}
+
+	public class PlaylistItemsSearch
+	{
+		public string nextPageToken { get; set; }
+
+		public PlaylistItem[] items { get; set; }
+	}
+
+	public class PlaylistItem
+	{
+		public YtVideoId contentDetails { get; set; }
+	}
+
+	#region wikpedia example
+	//    {
+	//    "batchcomplete": true,
+	//    "query": {
+	//        "normalized": [
+	//            {
+	//                "from": "u3fn92fb32f9yb329f32",
+	//                "to": "U3fn92fb32f9yb329f32"
+	//            }
+	//        ],
+	//        "pages": [
+	//            {
+	//                "ns": 0,
+	//                "title": "U3fn92fb32f9yb329f32",
+	//                "missing": true,
+	//                "contentmodel": "wikitext",
+	//                "pagelanguage": "en",
+	//                "pagelanguagehtmlcode": "en",
+	//                "pagelanguagedir": "ltr",
+	//                "fullurl": "https://en.wikipedia.org/wiki/U3fn92fb32f9yb329f32",
+	//                "editurl": "https://en.wikipedia.org/w/index.php?title=U3fn92fb32f9yb329f32&action=edit",
+	//                "canonicalurl": "https://en.wikipedia.org/wiki/U3fn92fb32f9yb329f32"
+	//            }
+	//        ]
+	//    }
+	//}
+	#endregion
+
+	public class WikipediaApiModel
+	{
+		public WikipediaQuery Query { get; set; }
+	}
+
+	public class WikipediaQuery
+	{
+		public WikipediaPage[] Pages { get; set; }
+	}
+
+	public class WikipediaPage
+	{
+		public bool Missing { get; set; } = false;
+
+		public string FullUrl { get; set; }
+	}
+
+	public class WoWJoke
+	{
+		public string Question { get; set; }
+
+		public string Answer { get; set; }
+
+		public override string ToString() => $"`{Question}`\n\n**{Answer}**";
+	}
 }
 
 //{

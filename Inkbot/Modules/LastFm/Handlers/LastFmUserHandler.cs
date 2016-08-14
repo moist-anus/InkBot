@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Discord.Commands;
-using Lastfm.Services;
 using MoistFm.Models;
 using NadekoBot.Classes;
 using NadekoBot.DataModels;
@@ -46,7 +45,7 @@ namespace NadekoBot.Modules.LastFm.Handlers
 		{
 			return await Task.Run(() =>
 			{
-				return DbHandler.Instance.GetLastScrobble(serverId, userId);
+				return DbHandler.Instance.FindAll<LastFmScrobble>(s => s.DiscordServerId == serverId && s.DiscordUserId == userId).OrderByDescending(s => s.Scrobbled).FirstOrDefault();
 			}).ConfigureAwait(false);
 		}
 

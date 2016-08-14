@@ -7,18 +7,21 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 using Discord.Commands;
-using Lastfm.Services;
+using log4net;
 using MoistFm;
 using MoistFm.Models;
 using NadekoBot.Classes;
 using NadekoBot.Extensions;
 using NadekoBot.Modules.LastFm.Handlers;
+using NadekoBot.Modules.LastFm.Models;
 using Newtonsoft.Json.Linq;
 
 namespace NadekoBot.Modules.LastFm.Commands
 {
 	class LastFmCommands : DiscordCommand
 	{
+		private static readonly ILog log = LogManager.GetLogger(typeof(LastFmCommands));
+
 		public LastFmCommands(DiscordModule module) : base(module)
 		{ }
 
@@ -404,8 +407,36 @@ namespace NadekoBot.Modules.LastFm.Commands
 					{
 						var discordUser = e.Channel.Users.Where(u => u.Id == Convert.ToUInt64(userId)).FirstOrDefault();
 						await LastFmUserHandler.SaveScrobble(serverId, userId, user.NowPlaying);
+
+						log.Debug($"({e.Server.Name}) #{e.Channel.Name} @{discordUser.Name} {e.Command.Text} display");
 						await e.Channel.SendMessage(CreateTrackMessage(discordUser, user.NowPlaying)).ConfigureAwait(false);
 					}
+				}
+			}
+		}
+
+		private static async void SendScrobbleMessage(LastFmUser lastFmUser, CommandEventArgs e)
+		{
+			var user = new LfmUser(lastFmUser.LastFmUsername, new LfmService(ApiKey));
+			var userId = lastFmUser.DiscordUserId;
+			user.GetNowPlaying();
+
+			if (!string.IsNullOrEmpty(user.NowPlaying.Name))
+			{
+				user.NowPlaying.GetInfo();
+				var serverId = Convert.ToInt64(e.Server.Id);
+				var lastScrobble = await LastFmUserHandler.GetLastScrobble(serverId, userId);
+				bool isLastArtist = string.Equals(user.NowPlaying.Artist.Name, lastScrobble.Artist, StringComparison.OrdinalIgnoreCase);
+				bool isLastTitle = string.Equals(user.NowPlaying.Name, lastScrobble.Track, StringComparison.OrdinalIgnoreCase);
+				bool isLastTrack = isLastArtist && isLastTitle;
+
+				if (!isLastTrack)
+				{
+					var discordUser = e.Channel.Users.Where(u => u.Id == Convert.ToUInt64(userId)).FirstOrDefault();
+					await LastFmUserHandler.SaveScrobble(serverId, userId, user.NowPlaying);
+
+					log.Debug($"({e.Server.Name}) #{e.Channel.Name} @{discordUser.Name} {e.Command.Text} display");
+					await e.Channel.SendMessage(CreateTrackMessage(discordUser, user.NowPlaying)).ConfigureAwait(false);
 				}
 			}
 		}
