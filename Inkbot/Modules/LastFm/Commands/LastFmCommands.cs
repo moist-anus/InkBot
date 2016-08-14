@@ -59,7 +59,7 @@ namespace NadekoBot.Modules.LastFm.Commands
 				var message = new StringBuilder();
 				var user = new LfmUser(lastFmUsername, Service);
 				var displayName = string.IsNullOrEmpty(discordUser.Nickname) ? discordUser.Name : discordUser.Nickname;
-				
+
 				action(user, displayName, message);
 
 				if (!string.IsNullOrEmpty(message.ToString())) await e.Channel.SendMessage(message.ToString()).ConfigureAwait(false);
@@ -316,61 +316,61 @@ namespace NadekoBot.Modules.LastFm.Commands
 				}));
 
 			cgb.CreateCommand(Prefix + "autoscrobble")
-					.Alias("asc")
-					.Description("Starts the auto scrobble display.")
-					.Parameter("pollRate", ParameterType.Optional)
-					.Do(async e =>
+				.Alias("asc")
+				.Description("Starts the auto scrobble display.")
+				.Parameter("pollRate", ParameterType.Optional)
+				.Do(async e =>
+				{
+					await Task.Run(() =>
 					{
-						await Task.Run(() =>
-									{
-										string pollRateParameter = e.GetArg("pollRate")?.Trim();
+						string pollRateParameter = e.GetArg("pollRate")?.Trim();
 
-										if (string.Equals(pollRateParameter, "stop", StringComparison.OrdinalIgnoreCase))
-										{
-											if (Timer != null)
-											{
-												Timer.Enabled = false;
-											}
+						if (string.Equals(pollRateParameter, "stop", StringComparison.OrdinalIgnoreCase))
+						{
+							if (Timer != null)
+							{
+								Timer.Enabled = false;
+							}
 
-											string message = Timer != null ? "**Auto scrobble** stopped." : "**Auto scrobble** display isn't started.";
-											e.Channel.SendMessage(message).ConfigureAwait(false);
-											return;
-										}
+							string message = Timer != null ? "**Auto scrobble** stopped." : "**Auto scrobble** display isn't started.";
+							e.Channel.SendMessage(message).ConfigureAwait(false);
+							return;
+						}
 
-										double pollRate;
+						double pollRate;
 
-										if (string.IsNullOrEmpty(pollRateParameter))
-										{
-											pollRate = .5;
-										}
-										else if (double.TryParse(pollRateParameter, out pollRate) && pollRate <= 0)
-										{
-											e.Channel.SendMessage($"**{pollRate}** is an invalid poll rate.").ConfigureAwait(false);
-											return;
-										}
+						if (string.IsNullOrEmpty(pollRateParameter))
+						{
+							pollRate = .5;
+						}
+						else if (double.TryParse(pollRateParameter, out pollRate) && pollRate <= 0)
+						{
+							e.Channel.SendMessage($"**{pollRate}** is an invalid poll rate.").ConfigureAwait(false);
+							return;
+						}
 
-										if (Timer != null && Timer.Enabled)
-										{
-											double currentPollRate = Timer.Interval / 60 / 1000;
+						if (Timer != null && Timer.Enabled)
+						{
+							double currentPollRate = Timer.Interval / 60 / 1000;
 
-											if (string.IsNullOrEmpty(pollRateParameter) || pollRate == currentPollRate)
-											{
-												e.Channel.SendMessage($"**Auto scrobble** already started (**{currentPollRate}** minute poll rate).").ConfigureAwait(false);
-												return;
-											}
+							if (string.IsNullOrEmpty(pollRateParameter) || pollRate == currentPollRate)
+							{
+								e.Channel.SendMessage($"**Auto scrobble** already started (**{currentPollRate}** minute poll rate).").ConfigureAwait(false);
+								return;
+							}
 
-											Timer.Interval = pollRate * 60 * 1000;
-											e.Channel.SendMessage($"**Auto scrobble** poll rated changed to **{pollRate}** minute{(pollRate == 1 ? string.Empty : "s")}").ConfigureAwait(false);
-											return;
-										}
+							Timer.Interval = pollRate * 60 * 1000;
+							e.Channel.SendMessage($"**Auto scrobble** poll rated changed to **{pollRate}** minute{(pollRate == 1 ? string.Empty : "s")}").ConfigureAwait(false);
+							return;
+						}
 
-										Timer = new Timer(pollRate * 60 * 1000);
-										Timer.Elapsed += (source, te) => ScrobbleToChannel(source, te, e);
-										Timer.Enabled = true;
+						Timer = new Timer(pollRate * 60 * 1000);
+						Timer.Elapsed += (source, te) => ScrobbleToChannel(source, te, e);
+						Timer.Enabled = true;
 
-										e.Channel.SendMessage($"**Auto scrobble** started (polling every **{pollRate}** minute{(pollRate == 1 ? string.Empty : "s")}).").ConfigureAwait(false);
-									});
+						e.Channel.SendMessage($"**Auto scrobble** started (polling every **{pollRate}** minute{(pollRate == 1 ? string.Empty : "s")}).").ConfigureAwait(false);
 					});
+				});
 		}
 
 		private static string CreateTrackMessage(Discord.User user, LfmTrack track)
@@ -388,6 +388,7 @@ namespace NadekoBot.Modules.LastFm.Commands
 		{
 			var serverId = Convert.ToInt64(e.Server.Id);
 			var scrobblers = await LastFmUserHandler.GetScrobblers();
+			bool displayedMessage = false;
 
 			foreach (var scrobbler in scrobblers)
 			{
@@ -408,11 +409,13 @@ namespace NadekoBot.Modules.LastFm.Commands
 						var discordUser = e.Channel.Users.Where(u => u.Id == Convert.ToUInt64(userId)).FirstOrDefault();
 						await LastFmUserHandler.SaveScrobble(serverId, userId, user.NowPlaying);
 
-						log.Debug($"({e.Server.Name}) #{e.Channel.Name} @{discordUser.Name} {e.Command.Text} display");
+						displayedMessage = true;
 						await e.Channel.SendMessage(CreateTrackMessage(discordUser, user.NowPlaying)).ConfigureAwait(false);
 					}
 				}
 			}
+
+			if (displayedMessage) log.Debug($"({e.Server.Name}) #{e.Channel.Name} {e.Command.Text} display");
 		}
 
 		private static async void SendScrobbleMessage(LastFmUser lastFmUser, CommandEventArgs e)
